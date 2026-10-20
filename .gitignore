@@ -1,0 +1,16 @@
+.DS_Store
+build/
+DerivedData/
+*.app/
+*.dSYM/
+*.xcarchive/
+*.zip
+*.log
+*.xcuserstate
+xcuserdata/
+.env
+.env.*
+*.p12
+*.mobileprovision
+*.pem
+*.key
