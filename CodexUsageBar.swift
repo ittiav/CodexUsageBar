@@ -18,9 +18,12 @@ final class UsageBar: NSObject, NSApplicationDelegate {
     private var displayButton: NSButton!
     private let menu = NSMenu()
     private var timer: Timer?
+    private var visibilityTimer: Timer?
     private var lastSnapshot: UsageSnapshot?
     private let queue = DispatchQueue(label: "CodexUsageBar.refresh")
     private let codexURL = URL(fileURLWithPath: "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex")
+    // Codex and Work share this application identifier, even when named ChatGPT.app.
+    private let codexBundleIdentifier = "com.openai.codex"
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -34,9 +37,32 @@ final class UsageBar: NSObject, NSApplicationDelegate {
         displayButton = NSButton(title: "Codex 用量…", target: self, action: #selector(openMenu))
         displayButton.isBordered = false
         displayButton.font = .systemFont(ofSize: 13)
+        displayButton.cell?.usesSingleLineMode = true
+        displayButton.cell?.lineBreakMode = .byTruncatingTail
         panel.contentView = displayButton
         positionPanel()
-        panel.orderFrontRegardless()
+        let workspaceNotifications = NSWorkspace.shared.notificationCenter
+        workspaceNotifications.addObserver(
+            self,
+            selector: #selector(frontmostApplicationChanged(_:)),
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil
+        )
+        workspaceNotifications.addObserver(
+            self,
+            selector: #selector(frontmostApplicationChanged(_:)),
+            name: NSWorkspace.didDeactivateApplicationNotification,
+            object: nil
+        )
+        updatePanelVisibility()
+        // Launching an accessory app can temporarily leave no frontmost app.
+        // Reconcile periodically as well as on notifications so that a launch or
+        // activation handoff cannot leave the panel hidden indefinitely.
+        let visibilityTimer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
+            self?.updatePanelVisibility()
+        }
+        self.visibilityTimer = visibilityTimer
+        RunLoop.main.add(visibilityTimer, forMode: .common)
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(positionPanel),
@@ -58,6 +84,33 @@ final class UsageBar: NSObject, NSApplicationDelegate {
         }
         refreshNow()
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in self?.refreshNow() }
+    }
+
+    @objc private func frontmostApplicationChanged(_ notification: Notification) {
+        let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+        if notification.name == NSWorkspace.didDeactivateApplicationNotification,
+           application?.bundleIdentifier == codexBundleIdentifier {
+            // Hide immediately during the handoff to another application's menu bar.
+            menu.cancelTracking()
+            panel.orderOut(nil)
+        }
+        // Read the current state after the activation handoff, rather than trusting
+        // an event for an app that may already have lost focus again.
+        DispatchQueue.main.async { [weak self] in self?.updatePanelVisibility() }
+    }
+
+    private func updatePanelVisibility() {
+        guard let application = NSWorkspace.shared.frontmostApplication,
+              application.bundleIdentifier == codexBundleIdentifier,
+              !application.isHidden else {
+            if panel.isVisible {
+                menu.cancelTracking()
+                panel.orderOut(nil)
+            }
+            return
+        }
+        positionPanel()
+        if !panel.isVisible { panel.orderFrontRegardless() }
     }
 
     @objc private func refreshNow() {
@@ -143,7 +196,7 @@ final class UsageBar: NSObject, NSApplicationDelegate {
         }
         defer { if process.isRunning { process.terminate() } }
         do {
-            try send(["jsonrpc":"2.0", "id":1, "method":"initialize", "params":["clientInfo":["name":"codex_usage_bar", "title":"Codex Usage Bar", "version":"1.2.1"], "capabilities":["experimentalApi":true]]])
+            try send(["jsonrpc":"2.0", "id":1, "method":"initialize", "params":["clientInfo":["name":"codex_usage_bar", "title":"Codex Usage Bar", "version":"1.2.2"], "capabilities":["experimentalApi":true]]])
             let initDeadline = Date().addingTimeInterval(8)
             while true {
                 let message = try readLine(until: initDeadline)
@@ -202,15 +255,33 @@ final class UsageBar: NSObject, NSApplicationDelegate {
 
     @objc private func positionPanel() {
         guard let screen = NSScreen.screens.first else { return }
-        let menuBarHeight = max(24, min(34, screen.frame.maxY - screen.visibleFrame.maxY))
-        let width = min(displayButton.fittingSize.width + 16, screen.frame.width - 24)
-        panel.setFrame(NSRect(
-            x: screen.frame.midX - width / 2,
-            y: screen.frame.maxY - menuBarHeight,
-            width: width,
-            height: menuBarHeight
-        ), display: true)
-        displayButton.frame = NSRect(x: 0, y: 0, width: width, height: menuBarHeight)
+        let preferredWidth = displayButton.fittingSize.width + 16
+        let frame: NSRect
+        if screen.safeAreaInsets.top > 0,
+           let leftArea = screen.auxiliaryTopLeftArea,
+           leftArea.width > 16, leftArea.height > 0 {
+            // Use the display's actual camera housing geometry rather than a model list.
+            // Keep the entire window to its left, including when the title grows.
+            let gap: CGFloat = 8
+            let width = min(preferredWidth, leftArea.width - 2 * gap)
+            frame = NSRect(
+                x: leftArea.maxX - gap - width,
+                y: leftArea.minY,
+                width: width,
+                height: leftArea.height
+            )
+        } else {
+            let menuBarHeight = max(24, min(34, screen.frame.maxY - screen.visibleFrame.maxY))
+            let width = min(preferredWidth, screen.frame.width - 24)
+            frame = NSRect(
+                x: screen.frame.midX - width / 2,
+                y: screen.frame.maxY - screen.safeAreaInsets.top - menuBarHeight,
+                width: width,
+                height: menuBarHeight
+            )
+        }
+        panel.setFrame(frame, display: true)
+        displayButton.frame = NSRect(origin: .zero, size: frame.size)
     }
 
     @objc private func openMenu() {
