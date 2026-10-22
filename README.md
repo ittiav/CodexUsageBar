@@ -2,7 +2,7 @@
 
 <img src="assets/icon.png" alt="Codex Usage Bar icon" width="96">
 
-Current source version: **1.2.2 (build 5)**. See [更新说明 / Changelog](CHANGELOG.md) for changes and upgrade notes. GitHub Releases are versioned separately; check the release tag before downloading an archive.
+Current source version: **1.2.2 (build 5)**. See [Changelog](CHANGELOG.md) for changes and upgrade notes. GitHub Releases are versioned separately; check the release tag before downloading an archive.
 
 An unofficial macOS utility that displays your remaining Codex quota at the top of the primary display. On displays with a camera notch, it automatically places the text immediately to the left of the notch with an 8-point gap; on other displays, it stays centered. Placement uses the display's reported safe area, so no model selection is needed, and updates when the display configuration changes. It shows a five-hour percentage and reset time, followed by a weekly percentage and reset time. The current interface uses Chinese labels.
 
@@ -10,13 +10,16 @@ The green percentages show the remaining quota for the five-hour and weekly wind
 
 The bar is visible only while Codex / Work (application identifier `com.openai.codex`, including the app named `ChatGPT.app`) is the frontmost application. Switching to another application hides it to avoid covering that application's menus; switching back shows it again. In addition to application-switch notifications, the app checks visibility every half second to recover from startup and activation timing changes. Quota refreshes continue in the background. This checks the active application, not individual window titles, and requires no Accessibility permission.
 
-## 显示规则（1.2.2）
+## Display behavior (1.2.2)
 
-- 刘海屏：使用 macOS 报告的屏幕安全区域，将整条文字放在刘海左侧，预留 8 点间距；无需选择机型。无刘海屏继续在顶部居中显示。
-- 仍显示在主屏幕；更换显示器或分辨率后自动重新定位。空间不足时文字保持单行并截断，避免伸进刘海区域。
-- 仅当前台应用是 Codex / Work 时显示。判断依据是应用标识 `com.openai.codex`，不是窗口标题；同一应用内的其他窗口也适用。
-- 切换到其他应用时隐藏，切回后恢复。应用切换通知之外，每 0.5 秒复核一次前台状态，避免启动或切换时机导致一直隐藏。用量数据仍每分钟刷新一次。
-- 这是后台菜单栏工具，没有 Dock 图标或常规主窗口；在其他应用前台时双击启动，没有可见窗口属于正常行为。
+- On a display with a notch, the bar sits to its left with an 8-point gap. On other displays it stays centered; no model selection is needed.
+- The bar uses the primary display, repositions when its configuration changes, and truncates long titles within the available area.
+- Only the foreground application's bundle identifier is checked. Individual window titles and internal Codex / Work window types are not inspected.
+- This background utility has no Dock icon or regular main window. Launching it while another application is active can appear to do nothing; bring Codex / Work to the front to see it.
+
+## Download
+
+Download the app, source, and checksums from [Release v1.2.2](https://github.com/ittiav/CodexUsageBar/releases/tag/v1.2.2). The `macos-universal` app supports both Apple Silicon and Intel. Check [Changelog](CHANGELOG.md) before upgrading.
 
 ## Requirements
 
@@ -64,7 +67,9 @@ Copy `LaunchAgents/local.codex.usagebar.login.plist` to `~/Library/LaunchAgents/
 
 ## Privacy and data
 
-The app contains no embedded tokens, account details, or analytics service and does not log credentials. It launches the local Codex CLI, which uses your existing sign-in to obtain quota data. The app caches only the last successfully read percentages, reset times, and read time in the current user's app preferences so it can show marked stale values during a temporary service failure.
+The app contains no embedded tokens, account details, or analytics service and does not log credentials. It reads the foreground application identifier locally to decide visibility and does not record window titles or a history of app switches. It launches the local Codex CLI, which uses your existing sign-in to obtain quota data. The app caches only the last successfully read percentages, reset times, and read time in the current user's app preferences so it can show marked stale values during a temporary service failure.
+
+Release archives contain the app or tracked source files only, without local credentials, usage caches, debug symbols, build logs, or Git history. See [Privacy review](PRIVACY_REVIEW.md) for the inspection scope and limits.
 
 This project is not affiliated with OpenAI and is not an official Codex app.
 

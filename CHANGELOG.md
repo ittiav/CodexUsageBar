@@ -1,31 +1,32 @@
-# 更新说明 / Changelog
+# Changelog
 
-## 1.2.2（构建号 5）— 2026-10-22
+## 1.2.2 (build 5) — 2026-10-22
 
-### 显示位置
+### Display placement
 
-- 修复顶部居中的用量条在 MacBook 刘海屏上被摄像头区域遮挡的问题。
-- 根据 macOS 提供的屏幕安全区域，自动将用量条放在刘海左侧，并保留 8 点间距，无需维护机型列表或手动选择机型。
-- 无刘海屏保持顶部居中；仍使用主屏幕，显示器配置变化后自动重新定位。
-- 文字过长时保持单行并截断，限制在可用区域内。
+- Fix the quota bar being obscured by the camera housing on MacBook displays with a notch.
+- Use the display's reported safe area to place the entire bar to the left of the notch with an 8-point gap, without a model list or manual model selection.
+- Keep top-center placement on displays without a notch. The bar remains on the primary display and repositions when the display configuration changes.
+- Keep long titles on one line and truncate them to fit the available area.
 
-### 前台显示与恢复
+### Foreground visibility and recovery
 
-- 用量条仅在 Codex / Work 所属应用（`com.openai.codex`，包括安装名为 `ChatGPT.app` 的版本）处于前台且未隐藏时显示，避免覆盖其他应用较长的菜单栏。
-- 根据前台应用识别，不读取窗口标题，不区分该应用内部不同类型的窗口，也无需辅助功能权限。
-- 切走时隐藏，切回时恢复；隐藏期间仍每分钟读取一次用量。
-- 除监听应用切换通知外，每 0.5 秒复核当前状态，处理启动时暂时没有前台应用，以及切换通知时序导致窗口可能一直隐藏的情况。
+- Show the bar only while Codex / Work (`com.openai.codex`, including the app installed as `ChatGPT.app`) is the frontmost application and is not hidden, avoiding overlap with other applications' menus.
+- Identify the active application by its bundle identifier. No window titles are read, and Accessibility permission is not required. Other windows belonging to the same application also qualify.
+- Hide the bar when switching away and restore it when switching back. Quota refreshes continue once per minute in the background.
+- Recheck visibility every half second in addition to application-switch notifications, recovering from startup and activation timing that could otherwise leave the bar hidden.
 
-### 升级与排查
+### Upgrade notes
 
-1. 先退出旧进程，再替换 `/Applications/CodexUsageBar.app`；若看不到用量条，可在“活动监视器”中退出 `CodexUsageBar`。
-2. 重新打开已替换的应用，并将 Codex / Work 切到前台。此工具没有常规主窗口，在其他应用前台时启动不会出现可见窗口。
-3. 在 Finder“显示简介”中确认版本为 **1.2.2**；构建号为 **5**。文件夹日期可能保留旧时间，不能作为版本依据。
+1. Quit the previous process before replacing `/Applications/CodexUsageBar.app`. If the bar is unavailable, quit `CodexUsageBar` in Activity Monitor.
+2. Open the replaced app and bring Codex / Work to the front. This background utility has no regular main window or Dock icon; launching it while another application is active can appear to do nothing.
+3. Verify **1.2.2 (build 5)** in the installed app's bundle metadata. Finder folder timestamps can retain an older date and do not identify the running version.
 
-已有登录启动配置继续使用相同的安装路径。五小时和每周额度、重置时间、缓存与每分钟刷新逻辑保持原有行为。
+The existing login launch configuration continues to use the same installation path. Five-hour and weekly quota calculations, reset times, cached values, and the once-per-minute refresh interval retain their existing behavior.
 
-### 验证与发布范围
+### Release and validation
 
-- 本机 Apple Silicon Release 编译通过，本地 ad hoc 签名校验通过。
-- 本机用户已确认更新后用量条可以显示；未完成 Intel、无刘海屏、多显示器和所有应用切换场景的实机验证。
-- 本次记录的是源码版本；请核对 GitHub Release 的标签与附件版本，旧版下载包不会随 `main` 的源码更新而自动替换。
+- The macOS app archive contains both Apple Silicon (`arm64`) and Intel (`x86_64`) executables in one universal binary and requires macOS 13 or later.
+- The app is ad hoc signed and has not been notarized by Apple. A source archive and SHA-256 checksums are provided alongside the app.
+- Both architectures compile successfully, and the packaged app passes signature verification. Display visibility was confirmed on an Apple Silicon Mac; Intel hardware, displays without a notch, multiple displays, and every application-switch scenario have not been fully tested.
+- See [Privacy review](PRIVACY_REVIEW.md) for the scope and limits of the source and release-package inspection.
