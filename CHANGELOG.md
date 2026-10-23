@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.3 (build 6) — 2026-10-23
+
+- Allow the quota panel to accompany full-screen applications as an auxiliary window.
+- Restore the panel when Codex becomes active, the active Space changes, the Mac wakes, or the user session becomes active again.
+- Recheck whether the panel belongs to the active Space instead of treating `isVisible` alone as proof that it is currently on screen. Foreground-only visibility and notch avoidance remain unchanged.
+
+### Upgrade and validation
+
+- Quit the previous process before replacing the app, then reopen it. The installed version is **1.2.3 (build 6)**.
+- The universal archive supports Apple Silicon and Intel on macOS 13 or later, is ad hoc signed, and is not notarized by Apple.
+- On the affected Apple Silicon Mac, the old process was running while its panel was absent from the current screen. After installing this fix, the panel was confirmed on screen with Codex in the foreground. Both architectures compile successfully; all wake, full-screen, multi-display, and Intel hardware scenarios have not been fully tested.
+- Source and package privacy checks are documented in [Privacy review](PRIVACY_REVIEW.md). App and source ZIPs include SHA-256 checksums.
+
 ## 1.2.2 (build 5) — 2026-10-22
 
 ### Display placement

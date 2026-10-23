@@ -2,7 +2,7 @@
 
 <img src="assets/icon.png" alt="Codex Usage Bar icon" width="96">
 
-Current source version: **1.2.2 (build 5)**. See [Changelog](CHANGELOG.md) for changes and upgrade notes. GitHub Releases are versioned separately; check the release tag before downloading an archive.
+Current source version: **1.2.3 (build 6)**. See [Changelog](CHANGELOG.md) for changes and upgrade notes. GitHub Releases are versioned separately; check the release tag before downloading an archive.
 
 An unofficial macOS utility that displays your remaining Codex quota at the top of the primary display. On displays with a camera notch, it automatically places the text immediately to the left of the notch with an 8-point gap; on other displays, it stays centered. Placement uses the display's reported safe area, so no model selection is needed, and updates when the display configuration changes. It shows a five-hour percentage and reset time, followed by a weekly percentage and reset time. The current interface uses Chinese labels.
 
@@ -10,16 +10,16 @@ The green percentages show the remaining quota for the five-hour and weekly wind
 
 The bar is visible only while Codex / Work (application identifier `com.openai.codex`, including the app named `ChatGPT.app`) is the frontmost application. Switching to another application hides it to avoid covering that application's menus; switching back shows it again. In addition to application-switch notifications, the app checks visibility every half second to recover from startup and activation timing changes. Quota refreshes continue in the background. This checks the active application, not individual window titles, and requires no Accessibility permission.
 
-## Display behavior (1.2.2)
+## Display behavior
 
 - On a display with a notch, the bar sits to its left with an 8-point gap. On other displays it stays centered; no model selection is needed.
-- The bar uses the primary display, repositions when its configuration changes, and truncates long titles within the available area.
+- The bar uses the primary display, repositions when its configuration changes, and truncates long titles within the available area. Version 1.2.3 also restores the panel after active-Space changes, wake, and Codex activation, and allows it to accompany full-screen applications.
 - Only the foreground application's bundle identifier is checked. Individual window titles and internal Codex / Work window types are not inspected.
 - This background utility has no Dock icon or regular main window. Launching it while another application is active can appear to do nothing; bring Codex / Work to the front to see it.
 
 ## Download
 
-Download the app, source, and checksums from [Release v1.2.2](https://github.com/ittiav/CodexUsageBar/releases/tag/v1.2.2). The `macos-universal` app supports both Apple Silicon and Intel. Check [Changelog](CHANGELOG.md) before upgrading.
+Download the app, source, and checksums from [Release v1.2.3](https://github.com/ittiav/CodexUsageBar/releases/tag/v1.2.3). The `macos-universal` app supports both Apple Silicon and Intel. Check [Changelog](CHANGELOG.md) before upgrading.
 
 ## Requirements
 
@@ -57,7 +57,7 @@ To verify the installed version, use Finder's Get Info or run:
 /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' /Applications/CodexUsageBar.app/Contents/Info.plist
 ```
 
-For this version the results are `1.2.2` and `5`. Finder folder timestamps can retain an earlier build time; the bundle version identifies the installed files, while quitting and reopening ensures the running process uses them. Avoid opening old copies from backup volumes or build folders.
+For this version the results are `1.2.3` and `6`. Finder folder timestamps can retain an earlier build time; the bundle version identifies the installed files, while quitting and reopening ensures the running process uses them. Avoid opening old copies from backup volumes or build folders.
 
 If the bar says quota is temporarily unreadable, check the Codex CLI path and sign-in listed under Requirements. This is a data-read failure, separate from the foreground-only visibility rule.
 

@@ -33,7 +33,7 @@ final class UsageBar: NSObject, NSApplicationDelegate {
         panel.hasShadow = false
         panel.level = .statusBar
         panel.hidesOnDeactivate = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .stationary]
+        panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
         displayButton = NSButton(title: "Codex 用量…", target: self, action: #selector(openMenu))
         displayButton.isBordered = false
         displayButton.font = .systemFont(ofSize: 13)
@@ -54,6 +54,16 @@ final class UsageBar: NSObject, NSApplicationDelegate {
             name: NSWorkspace.didDeactivateApplicationNotification,
             object: nil
         )
+        for name in [NSWorkspace.activeSpaceDidChangeNotification,
+                     NSWorkspace.didWakeNotification,
+                     NSWorkspace.sessionDidBecomeActiveNotification] {
+            workspaceNotifications.addObserver(
+                self,
+                selector: #selector(restorePanel),
+                name: name,
+                object: nil
+            )
+        }
         updatePanelVisibility()
         // Launching an accessory app can temporarily leave no frontmost app.
         // Reconcile periodically as well as on notifications so that a launch or
@@ -65,7 +75,7 @@ final class UsageBar: NSObject, NSApplicationDelegate {
         RunLoop.main.add(visibilityTimer, forMode: .common)
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(positionPanel),
+            selector: #selector(restorePanel),
             name: NSApplication.didChangeScreenParametersNotification,
             object: nil
         )
@@ -96,10 +106,16 @@ final class UsageBar: NSObject, NSApplicationDelegate {
         }
         // Read the current state after the activation handoff, rather than trusting
         // an event for an app that may already have lost focus again.
-        DispatchQueue.main.async { [weak self] in self?.updatePanelVisibility() }
+        restorePanel()
     }
 
-    private func updatePanelVisibility() {
+    @objc private func restorePanel() {
+        DispatchQueue.main.async { [weak self] in
+            self?.updatePanelVisibility(forceReorder: true)
+        }
+    }
+
+    private func updatePanelVisibility(forceReorder: Bool = false) {
         guard let application = NSWorkspace.shared.frontmostApplication,
               application.bundleIdentifier == codexBundleIdentifier,
               !application.isHidden else {
@@ -110,7 +126,11 @@ final class UsageBar: NSObject, NSApplicationDelegate {
             return
         }
         positionPanel()
-        if !panel.isVisible { panel.orderFrontRegardless() }
+        // isVisible can remain true while the panel is absent from the active
+        // Space. Reorder it when Codex activates or the Space/session changes.
+        if forceReorder || !panel.isVisible || !panel.isOnActiveSpace {
+            panel.orderFrontRegardless()
+        }
     }
 
     @objc private func refreshNow() {
@@ -196,7 +216,7 @@ final class UsageBar: NSObject, NSApplicationDelegate {
         }
         defer { if process.isRunning { process.terminate() } }
         do {
-            try send(["jsonrpc":"2.0", "id":1, "method":"initialize", "params":["clientInfo":["name":"codex_usage_bar", "title":"Codex Usage Bar", "version":"1.2.2"], "capabilities":["experimentalApi":true]]])
+            try send(["jsonrpc":"2.0", "id":1, "method":"initialize", "params":["clientInfo":["name":"codex_usage_bar", "title":"Codex Usage Bar", "version":"1.2.3"], "capabilities":["experimentalApi":true]]])
             let initDeadline = Date().addingTimeInterval(8)
             while true {
                 let message = try readLine(until: initDeadline)

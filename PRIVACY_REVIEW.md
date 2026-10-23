@@ -1,6 +1,6 @@
-# Privacy review — v1.2.2
+# Privacy review — v1.2.3
 
-Reviewed on 2026-10-22. This is a focused inspection of the current source snapshot and the v1.2.2 release archives, not a certification or a complete security audit.
+Reviewed on 2026-10-23. This is a focused inspection of the current source snapshot and the v1.2.3 release archives, not a certification or a complete security audit.
 
 ## Source behavior
 
