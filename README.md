@@ -1,78 +1,93 @@
 # Codex Usage Bar
 
+[简体中文](README.zh-CN.md) · [Changelog](CHANGELOG.md) · [Security review](SECURITY_REVIEW.md) · [Privacy](PRIVACY_REVIEW.md)
+
 <img src="assets/icon.png" alt="Codex Usage Bar icon" width="96">
 
-Current source version: **1.2.3 (build 6)**. See [Changelog](CHANGELOG.md) for changes and upgrade notes. GitHub Releases are versioned separately; check the release tag before downloading an archive.
+**Version 1.3.0 (build 7)** is an unofficial macOS quota bar for Codex / Work and Claude desktop. It follows the frontmost desktop application and displays that service's remaining subscription quota and reset times.
 
-An unofficial macOS utility that displays your remaining Codex quota at the top of the primary display. On displays with a camera notch, it automatically places the text immediately to the left of the notch with an 8-point gap; on other displays, it stays centered. Placement uses the display's reported safe area, so no model selection is needed, and updates when the display configuration changes. It shows a five-hour percentage and reset time, followed by a weekly percentage and reset time. The current interface uses Chinese labels.
+- Codex / Work (`com.openai.codex`) in front: show Codex quota.
+- Claude desktop (`com.anthropic.claudefordesktop`) in front: show Claude quota.
+- Other apps in front: hide the bar. Browser tabs and individual windows within the same app are not distinguished.
+- `5hrs` means the five-hour window; `W` means the weekly window. Green percentages show **remaining**, not consumed, quota. Menus and status messages currently use Chinese.
+- Each service has separate cached values, errors, and in-flight requests, so a late response cannot replace another service's display.
 
-The green percentages show the remaining quota for the five-hour and weekly windows. Click the text to refresh immediately or quit. The app refreshes every minute. If the service is temporarily unavailable, it marks the last successful values with `~` until their respective reset times.
+On notched displays, the bar sits immediately to the left of the notch with an 8-point gap. On other displays it stays centered at the top of the primary display. It repositions after display changes and recovers across Spaces, full-screen transitions, wake, and activation. Long text is truncated to fit.
 
-The bar is visible only while Codex / Work (application identifier `com.openai.codex`, including the app named `ChatGPT.app`) is the frontmost application. Switching to another application hides it to avoid covering that application's menus; switching back shows it again. In addition to application-switch notifications, the app checks visibility every half second to recover from startup and activation timing changes. Quota refreshes continue in the background. This checks the active application, not individual window titles, and requires no Accessibility permission.
+## Download and install
 
-## Display behavior
+Download the app, source, and checksums from [Release v1.3.0](https://github.com/ittiav/CodexUsageBar/releases/tag/v1.3.0). The `macos-universal` app contains Apple Silicon and Intel architectures and requires **macOS 13 or later**.
 
-- On a display with a notch, the bar sits to its left with an 8-point gap. On other displays it stays centered; no model selection is needed.
-- The bar uses the primary display, repositions when its configuration changes, and truncates long titles within the available area. Version 1.2.3 also restores the panel after active-Space changes, wake, and Codex activation, and allows it to accompany full-screen applications.
-- Only the foreground application's bundle identifier is checked. Individual window titles and internal Codex / Work window types are not inspected.
-- This background utility has no Dock icon or regular main window. Launching it while another application is active can appear to do nothing; bring Codex / Work to the front to see it.
+1. Quit the old `CodexUsageBar` process before replacing the app. If its menu is unavailable, quit that process in Activity Monitor.
+2. Unzip the app and replace `/Applications/CodexUsageBar.app`.
+3. Open that exact copy, then bring Codex / Work or Claude desktop to the front. This utility has no Dock icon or regular main window; launching it while another app is active can appear to do nothing.
 
-## Download
-
-Download the app, source, and checksums from [Release v1.2.3](https://github.com/ittiav/CodexUsageBar/releases/tag/v1.2.3). The `macos-universal` app supports both Apple Silicon and Intel. Check [Changelog](CHANGELOG.md) before upgrading.
-
-## Requirements
-
-- macOS 13 or later.
-- An executable Codex CLI at `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex`.
-- A local Codex CLI session that can read account rate limits.
-
-The app calls the local Codex CLI's `account/rateLimits/read` method. This interface may change with Codex updates.
-
-## Build from source
-
-Use Xcode 16 or a compatible version. Run these commands from the repository root:
-
-```sh
-xcodebuild -project CodexUsageBar.xcodeproj -scheme CodexUsageBar -configuration Release -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
-codesign --force --deep --sign - build/Build/Products/Release/CodexUsageBar.app
-```
-
-The resulting app is at `build/Build/Products/Release/CodexUsageBar.app`. Copy it to `/Applications`, then open it from Finder.
-
-The default build targets the current Mac's architecture. To build both Apple Silicon and Intel, add `ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO` to the `xcodebuild` command.
-
-Release archives labelled `macos-universal` contain Intel and Apple Silicon binaries. They have an ad hoc signature and are not notarized by Apple. Build from this repository if you prefer to inspect or modify the app yourself. A source update on `main` does not replace an older GitHub Release archive.
-
-## Install, upgrade, and troubleshoot
-
-1. Quit the running Codex Usage Bar from its menu while Codex / Work is in front. If the bar is unavailable, use Activity Monitor to quit the process named `CodexUsageBar`.
-2. Replace `/Applications/CodexUsageBar.app` with the newly built or downloaded app. Replacing files alone does not restart an already running process.
-3. Open that exact copy from `/Applications`, then bring Codex / Work to the front. The bar should appear after the next visibility check; quota data may take longer to load. Switching to another application should hide it.
-
-To verify the installed version, use Finder's Get Info or run:
+Replacing files does not restart an existing process. Finder folder dates can retain an older time. Confirm the installed version with Finder's Get Info or:
 
 ```sh
 /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' /Applications/CodexUsageBar.app/Contents/Info.plist
 /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' /Applications/CodexUsageBar.app/Contents/Info.plist
 ```
 
-For this version the results are `1.2.3` and `6`. Finder folder timestamps can retain an earlier build time; the bundle version identifies the installed files, while quitting and reopening ensures the running process uses them. Avoid opening old copies from backup volumes or build folders.
+The results for this release are `1.3.0` and `7`. The app is **ad hoc signed, not notarized by Apple**. After downloading both ZIPs and `SHA256SUMS.txt` into the same directory, verify them with:
 
-If the bar says quota is temporarily unreadable, check the Codex CLI path and sign-in listed under Requirements. This is a data-read failure, separate from the foreground-only visibility rule.
+```sh
+shasum -a 256 -c SHA256SUMS.txt
+```
+
+## Codex setup
+
+Codex requires a signed-in local CLI at `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex`. The app calls its `account/rateLimits/read` method over local standard input/output; that interface may change with Codex updates. Credentials stay with the installed CLI and are not bundled in this utility.
+
+## Connect Claude Pro / Max
+
+1. Open the bar's menu and select **连接 Claude…** (Connect Claude), from either service's bar.
+2. Sign in at `https://claude.ai/settings/usage` in the connection window. Use the same account as Claude desktop; its existing sign-in is not automatically imported. Claude Code CLI is not required.
+3. Click the native **读取额度** (Read quota) button at the top of the window. If there are multiple workspaces, choose the one used by Claude desktop.
+4. Wait for the connection confirmation, close the connection window, and bring Claude desktop to the front.
+
+The bar reads the five-hour and all-model weekly subscription limits where available. Missing windows show unavailable data, never a fabricated zero or full quota. This does not cover API billing, third-party credits, or per-model weekly limits. Changes to the desktop account are not detected automatically: disconnect and reconnect to select the same account here.
+
+**断开 Claude 连接** (Disconnect Claude) clears this app's WebKit session, workspace selection, and Claude quota cache. It does not sign out the desktop app or other browsers. See [Privacy](PRIVACY_REVIEW.md) for the local data that a Claude connection stores.
+
+### Compatibility limits
+
+Claude data is read from its website's **private, unversioned** `/api/organizations` and `/api/organizations/{id}/usage` endpoints. This is not a supported public subscription-quota API, and future site changes can break it. Sign-in challenges must be completed by the user. Some login providers may reject embedded browsers; this build does not bypass those restrictions. Unknown main-frame authentication redirects are blocked rather than silently trusted.
+
+## Refresh and troubleshooting
+
+- Normal refreshes occur about once per minute. After Claude has first been used, its checks continue in the background. Switching apps does not cause a request burst.
+- On Claude HTTP 429 responses, requests pause for at least five minutes, or longer if requested by the service. Manual retries respect this cooldown.
+- A `~` prefix marks cached values that have not been verified in this run, are old, or follow a failed request. Expired stale windows show pending update. Cached snapshots older than one day are ignored.
+- If the bar is invisible, check that the matching **desktop app** is frontmost and that the expected process was reopened after upgrading.
+- If Codex is unreadable, check the CLI path and sign-in. If Claude is unreadable, reopen its connection window, check the selected account/workspace, and click **读取额度**. Raw website error bodies are not shown in the bar.
+
+## Build and checks
+
+Use Xcode 16 or a compatible newer version:
+
+```sh
+xcodebuild -project CodexUsageBar.xcodeproj -scheme CodexUsageBar -configuration Release -derivedDataPath build 'ARCHS=arm64 x86_64' ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO build
+codesign --force --deep --sign - build/Build/Products/Release/CodexUsageBar.app
+```
+
+For a host-only build, omit `ARCHS` and `ONLY_ACTIVE_ARCH`. The app is created under `build/Build/Products/Release/`.
+
+```sh
+mkdir -p work
+swiftc UsageModels.swift Tests/main.swift -o work/usage-model-tests
+work/usage-model-tests
+node Tests/claude-request.test.js
+```
+
+The checks cover quota parsing, cache separation, navigation boundaries, origin checks, redirects, workspace selection, data minimization, and error handling. Mock requests do not use an account or network. Authenticated Claude reading and both service displays were also verified locally on Apple Silicon. Intel hardware, every account/login provider, and all display/wake scenarios have not been fully tested.
 
 ## Start at login
 
-Copy `LaunchAgents/local.codex.usagebar.login.plist` to `~/Library/LaunchAgents/`, then sign out and back in to macOS. The configuration points to `/Applications/CodexUsageBar.app`. Choosing Quit from the menu bar text ends only the current run.
+Copy `LaunchAgents/local.codex.usagebar.login.plist` to `~/Library/LaunchAgents/`, then sign out and back in to macOS. It points to `/Applications/CodexUsageBar.app`. Choosing Quit ends the current run.
 
-## Privacy and data
+## Privacy and license
 
-The app contains no embedded tokens, account details, or analytics service and does not log credentials. It reads the foreground application identifier locally to decide visibility and does not record window titles or a history of app switches. It launches the local Codex CLI, which uses your existing sign-in to obtain quota data. The app caches only the last successfully read percentages, reset times, and read time in the current user's app preferences so it can show marked stale values during a temporary service failure.
+The app has no telemetry implementation or custom data-collection server. Claude authentication is stored by this app's own WebKit session, separately from the installed app bundle. Release archives exclude login state, quota caches, Git history, logs, and debugging symbols. Read the scoped [security review](SECURITY_REVIEW.md) and [privacy review](PRIVACY_REVIEW.md); these are not independent certifications.
 
-Release archives contain the app or tracked source files only, without local credentials, usage caches, debug symbols, build logs, or Git history. See [Privacy review](PRIVACY_REVIEW.md) for the inspection scope and limits.
-
-This project is not affiliated with OpenAI and is not an official Codex app.
-
-## License
-
-MIT. See [LICENSE](LICENSE).
+Unofficial; not affiliated with OpenAI or Anthropic. Licensed under [MIT](LICENSE).

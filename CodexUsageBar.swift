@@ -2,28 +2,22 @@ import AppKit
 import Darwin
 import Foundation
 
-private struct UsageWindow: Codable {
-    let usedPercent: Int
-    let resetsAt: TimeInterval?
-}
-
-private struct UsageSnapshot: Codable {
-    let fiveHour: UsageWindow
-    let weekly: UsageWindow
-    let fetchedAt: TimeInterval
-}
-
 final class UsageBar: NSObject, NSApplicationDelegate {
     private var panel: NSPanel!
     private var displayButton: NSButton!
     private let menu = NSMenu()
     private var timer: Timer?
     private var visibilityTimer: Timer?
-    private var lastSnapshot: UsageSnapshot?
+    private var snapshots: [UsageProvider: UsageSnapshot] = [:]
+    private var lastErrors: [UsageProvider: Error] = [:]
+    private var refreshing: Set<UsageProvider> = []
+    private var lastAttempt: [UsageProvider: Date] = [:]
+    private var activeProvider: UsageProvider?
+    private var menuProvider: UsageProvider?
+    private var verifiedProviders: Set<UsageProvider> = []
+    private let claudeClient = ClaudeUsageClient()
     private let queue = DispatchQueue(label: "CodexUsageBar.refresh")
     private let codexURL = URL(fileURLWithPath: "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex")
-    // Codex and Work share this application identifier, even when named ChatGPT.app.
-    private let codexBundleIdentifier = "com.openai.codex"
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -64,6 +58,16 @@ final class UsageBar: NSObject, NSApplicationDelegate {
                 object: nil
             )
         }
+        for provider in UsageProvider.allCases {
+            if let data = UserDefaults.standard.data(forKey: provider.cacheKey),
+               let snapshot = try? JSONDecoder().decode(UsageSnapshot.self, from: data),
+               snapshot.canUseCache(at: Date().timeIntervalSince1970) {
+                snapshots[provider] = snapshot
+            }
+        }
+        claudeClient.onConnectionChanged = { [weak self] in
+            self?.refreshProvider(.claude, force: true)
+        }
         updatePanelVisibility()
         // Launching an accessory app can temporarily leave no frontmost app.
         // Reconcile periodically as well as on notifications so that a launch or
@@ -82,24 +86,30 @@ final class UsageBar: NSObject, NSApplicationDelegate {
         let refreshItem = NSMenuItem(title: "立即刷新", action: #selector(refreshNow), keyEquivalent: "r")
         refreshItem.target = self
         menu.addItem(refreshItem)
+        let connectItem = NSMenuItem(title: "连接 Claude…", action: #selector(connectClaude), keyEquivalent: "")
+        connectItem.target = self
+        menu.addItem(connectItem)
+        let disconnectItem = NSMenuItem(title: "断开 Claude 连接", action: #selector(disconnectClaude), keyEquivalent: "")
+        disconnectItem.target = self
+        menu.addItem(disconnectItem)
         menu.addItem(.separator())
         let quitItem = NSMenuItem(title: "退出", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
-        if let data = UserDefaults.standard.data(forKey: "lastUsageSnapshot"),
-           let snapshot = try? JSONDecoder().decode(UsageSnapshot.self, from: data),
-           Date().timeIntervalSince1970 - snapshot.fetchedAt < 86_400 {
-            lastSnapshot = snapshot
-            show(snapshot, stale: true, error: nil)
+        refreshProvider(.codex)
+        timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            self.refreshProvider(.codex)
+            if self.lastAttempt[.claude] != nil || self.snapshots[.claude] != nil {
+                self.refreshProvider(.claude)
+            }
         }
-        refreshNow()
-        timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in self?.refreshNow() }
     }
 
     @objc private func frontmostApplicationChanged(_ notification: Notification) {
         let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
         if notification.name == NSWorkspace.didDeactivateApplicationNotification,
-           application?.bundleIdentifier == codexBundleIdentifier {
+           UsageProvider(bundleIdentifier: application?.bundleIdentifier) != nil {
             // Hide immediately during the handoff to another application's menu bar.
             menu.cancelTracking()
             panel.orderOut(nil)
@@ -117,13 +127,19 @@ final class UsageBar: NSObject, NSApplicationDelegate {
 
     private func updatePanelVisibility(forceReorder: Bool = false) {
         guard let application = NSWorkspace.shared.frontmostApplication,
-              application.bundleIdentifier == codexBundleIdentifier,
-              !application.isHidden else {
+              !application.isHidden,
+              let provider = UsageProvider(bundleIdentifier: application.bundleIdentifier) else {
+            activeProvider = nil
             if panel.isVisible {
                 menu.cancelTracking()
                 panel.orderOut(nil)
             }
             return
+        }
+        if activeProvider != provider {
+            activeProvider = provider
+            render(provider)
+            refreshProvider(provider)
         }
         positionPanel()
         // isVisible can remain true while the panel is absent from the active
@@ -133,29 +149,65 @@ final class UsageBar: NSObject, NSApplicationDelegate {
         }
     }
 
-    @objc private func refreshNow() {
-        queue.async { [weak self] in
+    @objc private func connectClaude() { claudeClient.connect() }
+
+    @objc private func disconnectClaude() {
+        claudeClient.disconnect { [weak self] in
             guard let self else { return }
-            let result = self.readUsage()
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let snapshot):
-                    self.lastSnapshot = snapshot
-                    if let data = try? JSONEncoder().encode(snapshot) {
-                        UserDefaults.standard.set(data, forKey: "lastUsageSnapshot")
-                    }
-                    self.show(snapshot, stale: false, error: nil)
-                case .failure(let error):
-                    if let snapshot = self.lastSnapshot,
-                       Date().timeIntervalSince1970 - snapshot.fetchedAt < 86_400 {
-                        self.show(snapshot, stale: true, error: error.localizedDescription)
-                    } else {
-                        self.displayButton.attributedTitle = NSAttributedString(string: "Codex 用量暂不可读")
-                        self.displayButton.toolTip = "\(error.localizedDescription) · 每分钟自动重试"
-                        self.positionPanel()
-                    }
+            self.snapshots.removeValue(forKey: .claude)
+            self.verifiedProviders.remove(.claude)
+            self.lastAttempt.removeValue(forKey: .claude)
+            self.lastErrors[.claude] = ClaudeUsageError.notConnected
+            UserDefaults.standard.removeObject(forKey: UsageProvider.claude.cacheKey)
+            if self.activeProvider == .claude { self.render(.claude) }
+        }
+    }
+
+    @objc private func refreshNow() {
+        refreshProvider(activeProvider ?? menuProvider ?? .codex, force: true)
+    }
+
+    private func refreshProvider(_ provider: UsageProvider, force: Bool = false) {
+        guard !refreshing.contains(provider) else { return }
+        if !force, let previous = lastAttempt[provider], Date().timeIntervalSince(previous) < 55 { return }
+        lastAttempt[provider] = Date()
+        refreshing.insert(provider)
+        let completion: (Result<UsageSnapshot, Error>) -> Void = { [weak self] result in
+            guard let self else { return }
+            self.refreshing.remove(provider)
+            switch result {
+            case .success(let snapshot):
+                self.snapshots[provider] = snapshot
+                self.verifiedProviders.insert(provider)
+                self.lastErrors.removeValue(forKey: provider)
+                if let data = try? JSONEncoder().encode(snapshot) {
+                    UserDefaults.standard.set(data, forKey: provider.cacheKey)
                 }
+            case .failure(let error): self.lastErrors[provider] = error
             }
+            // An old Codex response must never overwrite a foreground Claude bar.
+            if self.activeProvider == provider { self.render(provider) }
+        }
+        switch provider {
+        case .claude: claudeClient.fetch(completion: completion)
+        case .codex:
+            queue.async { [weak self] in
+                guard let self else { return }
+                let result = self.readUsage()
+                DispatchQueue.main.async { completion(result) }
+            }
+        }
+    }
+
+    private func render(_ provider: UsageProvider) {
+        let error = lastErrors[provider]?.localizedDescription
+        if let snapshot = snapshots[provider], snapshot.canUseCache(at: Date().timeIntervalSince1970) {
+            let stale = !verifiedProviders.contains(provider) || error != nil || Date().timeIntervalSince1970 - snapshot.fetchedAt > 90
+            show(snapshot, provider: provider, stale: stale, error: error)
+        } else {
+            displayButton.attributedTitle = NSAttributedString(string: "\(provider.title) \(error == nil ? "用量…" : "用量暂不可读")")
+            displayButton.toolTip = error ?? "正在读取 \(provider.title) 额度"
+            positionPanel()
         }
     }
 
@@ -216,7 +268,7 @@ final class UsageBar: NSObject, NSApplicationDelegate {
         }
         defer { if process.isRunning { process.terminate() } }
         do {
-            try send(["jsonrpc":"2.0", "id":1, "method":"initialize", "params":["clientInfo":["name":"codex_usage_bar", "title":"Codex Usage Bar", "version":"1.2.3"], "capabilities":["experimentalApi":true]]])
+            try send(["jsonrpc":"2.0", "id":1, "method":"initialize", "params":["clientInfo":["name":"codex_usage_bar", "title":"Codex Usage Bar", "version":"1.3.0"], "capabilities":["experimentalApi":true]]])
             let initDeadline = Date().addingTimeInterval(8)
             while true {
                 let message = try readLine(until: initDeadline)
@@ -246,7 +298,8 @@ final class UsageBar: NSObject, NSApplicationDelegate {
                 let fiveHour = firstDuration <= secondDuration ? first : second
                 let weekly = firstDuration > secondDuration ? first : second
                 func window(_ value: [String: Any]) -> UsageWindow? {
-                    guard let used = value["usedPercent"] as? Int else { return nil }
+                    guard let used = value["usedPercent"] as? Double,
+                          used.isFinite, (0...100).contains(used) else { return nil }
                     let reset = (value["resetsAt"] as? NSNumber)?.doubleValue
                     return UsageWindow(usedPercent: used, resetsAt: reset)
                 }
@@ -258,17 +311,17 @@ final class UsageBar: NSObject, NSApplicationDelegate {
         } catch { return .failure(error) }
     }
 
-    private func show(_ snapshot: UsageSnapshot, stale: Bool, error: String?) {
-        let title = NSMutableAttributedString(string: "5小时 ")
+    private func show(_ snapshot: UsageSnapshot, provider: UsageProvider, stale: Bool, error: String?) {
+        let title = NSMutableAttributedString(string: "\(provider.title) 5hrs ")
         appendWindow(snapshot.fiveHour, weekly: false, stale: stale, to: title)
-        title.append(NSAttributedString(string: " | 周 "))
+        title.append(NSAttributedString(string: " | W "))
         appendWindow(snapshot.weekly, weekly: true, stale: stale, to: title)
         displayButton.attributedTitle = title
         if stale {
             let time = Date(timeIntervalSince1970: snapshot.fetchedAt).formatted(date: .omitted, time: .shortened)
             displayButton.toolTip = "上次成功读取：\(time) · \(error ?? "正在刷新")"
         } else {
-            displayButton.toolTip = "Codex 剩余额度 · 每分钟自动刷新"
+            displayButton.toolTip = "\(provider.title) 剩余额度 · 每分钟自动刷新"
         }
         positionPanel()
     }
@@ -305,15 +358,20 @@ final class UsageBar: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openMenu() {
+        menuProvider = activeProvider
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: 0), in: displayButton)
     }
 
-    private func appendWindow(_ value: UsageWindow, weekly: Bool, stale: Bool, to title: NSMutableAttributedString) {
+    private func appendWindow(_ optionalValue: UsageWindow?, weekly: Bool, stale: Bool, to title: NSMutableAttributedString) {
+        guard let value = optionalValue else {
+            title.append(NSAttributedString(string: "暂无数据"))
+            return
+        }
         if stale, let reset = value.resetsAt, reset <= Date().timeIntervalSince1970 {
             title.append(NSAttributedString(string: "待更新"))
             return
         }
-        let remaining = max(0, min(100, 100 - value.usedPercent))
+        let remaining = Int(max(0, min(100, 100 - value.usedPercent)).rounded())
         let percentage = "\(stale ? "~" : "")\(remaining)%"
         title.append(NSAttributedString(string: percentage, attributes: [.foregroundColor: NSColor.systemGreen]))
         guard let timestamp = value.resetsAt else {

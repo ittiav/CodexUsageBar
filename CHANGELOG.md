@@ -1,5 +1,18 @@
 # Changelog
 
+[简体中文](CHANGELOG.zh-CN.md)
+
+## 1.3.0 (build 7) — 2026-10-25
+
+- Switch between Codex / Work and Claude desktop quota according to the frontmost application's bundle identifier. Other apps still hide the bar.
+- Label the provider and isolate its cache, errors, in-flight requests, and refresh timing. A delayed response from one provider cannot replace the other provider's displayed quota.
+- Add a separate Claude Pro / Max login window using this app's own WebKit session, with workspace selection and a disconnect action that clears the local session and Claude cache.
+- Read five-hour and all-model weekly Claude subscription quota from the signed-in website. Its private API is a compatibility dependency; it is not a supported public quota API.
+- Preserve decimal utilization internally, support independently absent quota windows, and back off for at least five minutes on Claude rate limits.
+- Use `5hrs` and `W` as the quota window labels.
+- Harden embedded navigation, use an isolated script world and exact-origin check, reject request redirects, minimize data crossing into native code, and prevent reads during disconnect cleanup. Require workspace selection again if a saved workspace is no longer present.
+- Add 36 quota-model/navigation checks and 10 mocked request scenarios. Authenticated Claude quota retrieval and switching between native Codex and Claude quota displays were confirmed locally on 2026-10-25. Intel hardware, other account types and sign-in providers, and all display configurations have not been fully tested. The universal app is ad hoc signed, not notarized. See the security and privacy reviews for scope and limits.
+
 ## 1.2.3 (build 6) — 2026-10-23
 
 - Allow the quota panel to accompany full-screen applications as an auxiliary window.

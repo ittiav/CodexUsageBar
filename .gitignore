@@ -14,3 +14,8 @@ xcuserdata/
 *.mobileprovision
 *.pem
 *.key
+
+# Local materials may contain account sessions or diagnostic data.
+/inputs/
+/work/
+/outputs/

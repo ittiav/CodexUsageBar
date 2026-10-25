@@ -4,16 +4,20 @@
   classes = {};
   objectVersion = 56;
   objects = {
+    A10000000000000000000015 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageModels.swift; sourceTree = "<group>"; };
+    A10000000000000000000016 = {isa = PBXBuildFile; fileRef = A10000000000000000000015; };
+    A10000000000000000000017 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeUsageClient.swift; sourceTree = "<group>"; };
+    A10000000000000000000018 = {isa = PBXBuildFile; fileRef = A10000000000000000000017; };
     A10000000000000000000001 /* CodexUsageBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* CodexUsageBar.swift */; };
     A10000000000000000000013 /* CodexUsageBar.icns in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000014 /* CodexUsageBar.icns */; };
     A10000000000000000000002 /* CodexUsageBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexUsageBar.swift; sourceTree = "<group>"; };
     A10000000000000000000014 /* CodexUsageBar.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = CodexUsageBar.icns; sourceTree = "<group>"; };
     A10000000000000000000003 /* CodexUsageBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CodexUsageBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
-    A10000000000000000000004 /* Sources */ = {isa = PBXGroup; children = (A10000000000000000000002 /* CodexUsageBar.swift */, A10000000000000000000014 /* CodexUsageBar.icns */,); sourceTree = "<group>"; };
+    A10000000000000000000004 /* Sources */ = {isa = PBXGroup; children = (A10000000000000000000015, A10000000000000000000017, A10000000000000000000002 /* CodexUsageBar.swift */, A10000000000000000000014 /* CodexUsageBar.icns */,); sourceTree = "<group>"; };
     A10000000000000000000005 /* Products */ = {isa = PBXGroup; children = (A10000000000000000000003 /* CodexUsageBar.app */,); name = Products; sourceTree = "<group>"; };
     A10000000000000000000006 /* Project object */ = {isa = PBXProject; attributes = {BuildIndependentTargetsInParallel = 1; LastUpgradeCheck = 1640; }; buildConfigurationList = A10000000000000000000011; compatibilityVersion = "Xcode 15.0"; developmentRegion = en; hasScannedForEncodings = 0; mainGroup = A10000000000000000000004; productRefGroup = A10000000000000000000005; projectDirPath = ""; projectRoot = ""; targets = (A10000000000000000000007 /* CodexUsageBar */ ,); };
     A10000000000000000000007 /* CodexUsageBar */ = {isa = PBXNativeTarget; buildConfigurationList = A10000000000000000000012; buildPhases = (A10000000000000000000008 /* Sources */, A10000000000000000000009 /* Frameworks */, A1000000000000000000000A /* Resources */,); buildRules = (); dependencies = (); name = CodexUsageBar; productName = CodexUsageBar; productReference = A10000000000000000000003 /* CodexUsageBar.app */; productType = "com.apple.product-type.application"; };
-    A10000000000000000000008 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001 /* CodexUsageBar.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+    A10000000000000000000008 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000016, A10000000000000000000018, A10000000000000000000001 /* CodexUsageBar.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
     A10000000000000000000009 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
     A1000000000000000000000A /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000013 /* CodexUsageBar.icns in Resources */,); runOnlyForDeploymentPostprocessing = 0; };
     A1000000000000000000000B /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = Info.plist; MACOSX_DEPLOYMENT_TARGET = 13.0; PRODUCT_BUNDLE_IDENTIFIER = local.codex.usagebar; PRODUCT_NAME = CodexUsageBar; SDKROOT = macosx; SWIFT_VERSION = 5.0; }; name = Debug; };

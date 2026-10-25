@@ -1,29 +1,37 @@
-# Privacy review — v1.2.3
+# Privacy review — v1.3.0
 
-Reviewed on 2026-10-23. This is a focused inspection of the current source snapshot and the v1.2.3 release archives, not a certification or a complete security audit.
+[简体中文](PRIVACY_REVIEW.zh-CN.md) · [Security review](SECURITY_REVIEW.md)
 
-## Source behavior
+Reviewed on **2026-10-25**, for the current source and v1.3.0 release archives. This focused review is not an independent certification or a complete security audit. The historical v1.2.3 review remains available at [its release tag](https://github.com/ittiav/CodexUsageBar/blob/v1.2.3/PRIVACY_REVIEW.md).
 
-- No embedded account credentials, API keys, tokens, personal email addresses, user-specific home-directory paths, or analytics endpoints were found in the tracked source and resources.
-- Visibility uses the frontmost application's bundle identifier and hidden state. The app does not read window titles, record application-switch history, or request Accessibility access.
-- Quota retrieval starts the separately installed Codex CLI over local standard input/output. The app does not bundle that CLI or its sign-in files. The CLI uses the current user's existing authentication and may communicate with its service; this review does not audit the CLI, its network traffic, or the service.
-- Cached quota percentages, reset timestamps, and the successful read time are stored in the current user's local app preferences. They remain on that user's machine and are not included in a release archive.
-- Service error messages can appear locally in the bar's tooltip. The app has no credential logging or telemetry implementation.
+## Data used on the local Mac
 
-## Packaged files
+| Data | Purpose and storage |
+| --- | --- |
+| Foreground application's bundle identifier and hidden state | Choose the visible provider. Window titles and an app-switch history are not read or recorded. |
+| Codex quota and reset timestamps | Read through the separately installed, signed-in Codex CLI. Authentication stays with that CLI; it may communicate with its service. |
+| Claude login session | Created by the user's sign-in inside this app's separate WebKit window and retained in its local website-data store. No login cookies, OAuth tokens, or passwords are copied from other browsers, the desktop app, Keychain, or conversation files. |
+| Claude workspace choices | Minimal IDs/names are presented for local selection. Only the selected workspace ID is saved in app preferences; workspace names are not logged or cached by native code. |
+| Last successful quotas | Each service's used percentages, reset timestamps, and successful read time are cached separately in app preferences. Snapshots older than one day are ignored; quitting alone does not erase them. |
+| Error state | Claude errors use fixed messages and HTTP status numbers, without raw server bodies. Codex CLI errors can appear in local tooltips. The app does not implement credential logging or telemetry. |
 
-- The universal app archive contains only the executable, app Info.plist, icon, package marker, and ad hoc signature files.
-- The source archive is generated from the release commit with `git archive`; it includes tracked project files and documentation, without Git history or working-directory extras.
-- Login helpers, GitHub CLI files, authentication configuration, local usage preferences, build logs, caches, and debugging symbols are excluded from both archives.
-- ZIP entries omit extended attributes, resource forks, local owner identifiers, and Finder metadata. The app uses an ad hoc signature, which does not embed a personal Developer ID certificate.
-- Standard SDK, Xcode, and build-OS version metadata remains in the app's Info.plist; it does not identify an account, machine name, or home directory.
-- The README icon's EXIF contained image dimensions only. That optional metadata was removed without changing its compressed pixel data. The app icon's embedded images were also inspected.
+## Network and authentication boundary
 
-## Checks performed
+Claude reading uses same-origin website requests to `/api/organizations` and `/api/organizations/{id}/usage` from `https://claude.ai`. The script runs in an isolated WebKit world, rejects request redirects, and returns only the needed quota fields and workspace selection information to Swift. Cookie values stay with WebKit rather than crossing the bridge. The app does not request conversations or send data to a custom collection server.
 
-- Reviewed the Swift source, project configuration, launch-at-login plist, documentation, image metadata, and final archive member lists.
-- Scanned file contents and executable bytes for common credential formats, private keys, JWTs, personal email addresses, and user-specific home-directory paths. No matches were found in the published snapshot or final packages.
-- Inspected the final package manifests to exclude authentication files, local settings, debugging symbols, and build output outside the app itself.
-- Built both `arm64` and `x86_64`, removed debugging/local symbols from the packaged executable, and verified its ad hoc signature. SHA-256 checksums accompany the app and source ZIPs.
+The sign-in page and its allowed authentication providers still have their own network behavior and privacy policies; the utility does not audit their traffic or the Codex CLI's internals. These website quota APIs are private and can change.
 
-These checks cover the release artifacts and current tracked snapshot. They do not prove that arbitrary secrets cannot evade pattern detection, audit repository history or previous releases, or replace runtime and cross-device testing. Intel hardware and all display/window configurations have not been fully tested.
+## Disconnect and account changes
+
+**Disconnect Claude** clears this app's WebKit website data, selected workspace ID, and Claude quota cache. It does not sign out the desktop app or another browser and does not clear Codex preferences. New reads are blocked while cleanup completes. The utility cannot detect a different account selected inside Claude desktop, so reconnect with the matching account after changing it.
+
+## Release contents and inspection
+
+- The app ZIP contains only five app files: executable, Info.plist, icon, package marker, and ad hoc signature resources. It does not include local WebKit data or preferences.
+- The source ZIP is produced from the release Git commit and excludes Git history and local working materials. `inputs/`, `work/`, and `outputs/` are explicitly ignored by Git.
+- No login helpers, authentication configuration, account/session files, quota caches, build logs, or debugging symbols are packaged. ZIP metadata omits resource forks, extended attributes, local owner identifiers, and Finder metadata.
+- Standard SDK, Xcode, and build-OS versions remain in Info.plist; they do not identify a user's account, host name, or home directory. Ad hoc signing does not embed a personal Developer ID certificate.
+- The current source, resources, binary bytes, archive names, and extracted files are inspected for common credential patterns, private keys, personal home paths, email addresses, and unintended files. The synthetic URL-credential fixture in navigation tests is intentional, not personal data. No real embedded credentials or personal account data were identified within this inspection's scope.
+- App signatures, both architectures, archive integrity, and SHA-256 checksums are checked. Uploaded asset digests are compared with local files before publication.
+
+Scans cannot prove the absence of arbitrary secrets. This review covers the current release snapshot and packages, not all repository history, older releases, the full websites/CLIs, or every runtime/login scenario. See the [security review](SECURITY_REVIEW.md) for residual risks.
