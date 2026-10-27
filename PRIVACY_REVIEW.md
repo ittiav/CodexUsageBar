@@ -1,14 +1,15 @@
-# Privacy review — v1.3.0
+# Privacy review — v1.3.1
 
 [简体中文](PRIVACY_REVIEW.zh-CN.md) · [Security review](SECURITY_REVIEW.md)
 
-Reviewed on **2026-10-25**, for the current source and v1.3.0 release archives. This focused review is not an independent certification or a complete security audit. The historical v1.2.3 review remains available at [its release tag](https://github.com/ittiav/CodexUsageBar/blob/v1.2.3/PRIVACY_REVIEW.md).
+Reviewed on **2026-10-27**, for the current source and v1.3.1 release archives. This focused review is not an independent certification or a complete security audit. The historical v1.2.3 review remains available at [its release tag](https://github.com/ittiav/CodexUsageBar/blob/v1.2.3/PRIVACY_REVIEW.md).
 
 ## Data used on the local Mac
 
 | Data | Purpose and storage |
 | --- | --- |
 | Foreground application's bundle identifier and hidden state | Choose the visible provider. Window titles and an app-switch history are not read or recorded. |
+| This quota panel’s window ID and on-screen flag | Queried locally from WindowServer to recover an invisible panel. Only this app’s window is requested; no pixels, other window titles, history, or persistent log are collected. No Screen Recording permission is requested. |
 | Codex quota and reset timestamps | Read through the separately installed, signed-in Codex CLI. Authentication stays with that CLI; it may communicate with its service. |
 | Claude login session | Created by the user's sign-in inside this app's separate WebKit window and retained in its local website-data store. No login cookies, OAuth tokens, or passwords are copied from other browsers, the desktop app, Keychain, or conversation files. |
 | Claude workspace choices | Minimal IDs/names are presented for local selection. Only the selected workspace ID is saved in app preferences; workspace names are not logged or cached by native code. |

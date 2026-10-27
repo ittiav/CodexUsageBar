@@ -4,7 +4,7 @@
 
 <img src="assets/icon.png" alt="Codex Usage Bar icon" width="96">
 
-**Version 1.3.0 (build 7)** is an unofficial macOS quota bar for Codex / Work and Claude desktop. It follows the frontmost desktop application and displays that service's remaining subscription quota and reset times.
+**Version 1.3.1 (build 8)** is an unofficial macOS quota bar for Codex / Work and Claude desktop. It follows the frontmost desktop application and displays that service's remaining subscription quota and reset times.
 
 - Codex / Work (`com.openai.codex`) in front: show Codex quota.
 - Claude desktop (`com.anthropic.claudefordesktop`) in front: show Claude quota.
@@ -16,7 +16,7 @@ On notched displays, the bar sits immediately to the left of the notch with an 8
 
 ## Download and install
 
-Download the app, source, and checksums from [Release v1.3.0](https://github.com/ittiav/CodexUsageBar/releases/tag/v1.3.0). The `macos-universal` app contains Apple Silicon and Intel architectures and requires **macOS 13 or later**.
+Download the app, source, and checksums from [Release v1.3.1](https://github.com/ittiav/CodexUsageBar/releases/tag/v1.3.1). The `macos-universal` app contains Apple Silicon and Intel architectures and requires **macOS 13 or later**.
 
 1. Quit the old `CodexUsageBar` process before replacing the app. If its menu is unavailable, quit that process in Activity Monitor.
 2. Unzip the app and replace `/Applications/CodexUsageBar.app`.
@@ -29,7 +29,7 @@ Replacing files does not restart an existing process. Finder folder dates can re
 /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' /Applications/CodexUsageBar.app/Contents/Info.plist
 ```
 
-The results for this release are `1.3.0` and `7`. The app is **ad hoc signed, not notarized by Apple**. After downloading both ZIPs and `SHA256SUMS.txt` into the same directory, verify them with:
+The results for this release are `1.3.1` and `8`. The app is **ad hoc signed, not notarized by Apple**. After downloading both ZIPs and `SHA256SUMS.txt` into the same directory, verify them with:
 
 ```sh
 shasum -a 256 -c SHA256SUMS.txt
@@ -59,6 +59,7 @@ Claude data is read from its website's **private, unversioned** `/api/organizati
 - Normal refreshes occur about once per minute. After Claude has first been used, its checks continue in the background. Switching apps does not cause a request burst.
 - On Claude HTTP 429 responses, requests pause for at least five minutes, or longer if requested by the service. Manual retries respect this cooldown.
 - A `~` prefix marks cached values that have not been verified in this run, are old, or follow a failed request. Expired stale windows show pending update. Cached snapshots older than one day are ignored.
+- Version 1.3.1 also checks whether WindowServer actually has the panel on screen and resets its ordering state when needed. It queries only its own window metadata, without screenshots or a new permission. Recovery was confirmed on the affected Mac; the original system trigger remains unknown.
 - If the bar is invisible, check that the matching **desktop app** is frontmost and that the expected process was reopened after upgrading.
 - If Codex is unreadable, check the CLI path and sign-in. If Claude is unreadable, reopen its connection window, check the selected account/workspace, and click **读取额度**. Raw website error bodies are not shown in the bar.
 

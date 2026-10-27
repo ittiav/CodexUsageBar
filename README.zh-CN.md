@@ -4,7 +4,7 @@
 
 <img src="assets/icon.png" alt="Codex Usage Bar 图标" width="96">
 
-**1.3.0（构建号 7）** 是一款非官方 macOS 订阅额度工具，根据当前前台桌面应用显示对应服务的剩余额度和重置时间。
+**1.3.1（构建号 8）** 是一款非官方 macOS 订阅额度工具，根据当前前台桌面应用显示对应服务的剩余额度和重置时间。
 
 - Codex／Work（`com.openai.codex`）在前台：显示 Codex。
 - Claude 桌面版（`com.anthropic.claudefordesktop`）在前台：显示 Claude。
@@ -16,7 +16,7 @@
 
 ## 下载与升级
 
-从 [Release v1.3.0](https://github.com/ittiav/CodexUsageBar/releases/tag/v1.3.0) 下载通用安装包、源码包及校验文件。通用包包含 Apple Silicon 和 Intel 两种架构，需要 **macOS 13 或更高版本**。
+从 [Release v1.3.1](https://github.com/ittiav/CodexUsageBar/releases/tag/v1.3.1) 下载通用安装包、源码包及校验文件。通用包包含 Apple Silicon 和 Intel 两种架构，需要 **macOS 13 或更高版本**。
 
 1. 先退出旧的 `CodexUsageBar` 进程。看不到菜单时，可以在“活动监视器”中退出该进程。
 2. 解压后替换 `/Applications/CodexUsageBar.app`。
@@ -29,7 +29,7 @@
 /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' /Applications/CodexUsageBar.app/Contents/Info.plist
 ```
 
-本版应输出 `1.3.0` 和 `7`。应用采用 **ad hoc 本地签名，未经过 Apple 公证**。将两个 ZIP 和 `SHA256SUMS.txt` 放在同一文件夹后，可验证：
+本版应输出 `1.3.1` 和 `8`。应用采用 **ad hoc 本地签名，未经过 Apple 公证**。将两个 ZIP 和 `SHA256SUMS.txt` 放在同一文件夹后，可验证：
 
 ```sh
 shasum -a 256 -c SHA256SUMS.txt
@@ -55,6 +55,8 @@ shasum -a 256 -c SHA256SUMS.txt
 Claude 读取依赖网站内部的 `/api/organizations` 与 `/api/organizations/{id}/usage` **非公开、未版本化接口**，并非受支持的公开订阅额度 API，网站更新可能导致失效。登录验证需要本人完成，不会绕过验证。部分登录提供方可能拒绝内嵌浏览器；本版不会绕过该限制。未知的主页面登录重定向会被阻止，而非自动信任。
 
 ## 刷新与排查
+
+1.3.1 增加对 WindowServer 中窗口实际显示状态的检查，必要时重置排序并恢复显示。仅查询自身窗口元数据，不截屏、不新增权限。本机已确认恢复；原始触发事件仍未确定。
 
 - 正常约每分钟刷新一次；首次使用 Claude 后，其读取会在后台继续。切换应用不会导致密集请求。
 - Claude 返回 HTTP 429 后，至少暂停五分钟；服务要求更久时继续等待，手动刷新也遵守该等待时间。

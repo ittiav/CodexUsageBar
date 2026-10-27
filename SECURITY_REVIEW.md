@@ -1,8 +1,12 @@
-# Security review — v1.3.0
+# Security review — v1.3.1
 
 [简体中文](SECURITY_REVIEW.zh-CN.md) · [Privacy review](PRIVACY_REVIEW.md)
 
-Reviewed on **2026-10-25**. Scope: the current Swift source, embedded request script, Xcode project, launch plist, resources, tests, and final v1.3.0 app/source archives. This is a focused source and packaging review, not an independent audit, penetration test, notarization, or guarantee that every vulnerability has been found.
+Reviewed on **2026-10-27**. Scope: the current Swift source, embedded request script, Xcode project, launch plist, resources, tests, and final v1.3.1 app/source archives. This is a focused source and packaging review, not an independent audit, penetration test, notarization, or guarantee that every vulnerability has been found.
+
+## 1.3.1 visibility recovery review
+
+The release delta adds a main-thread check of this panel’s own WindowServer metadata. It requests only the panel window ID, examines its on-screen flag, and resets ordering if absent while a supported app is foreground. It does not capture pixels, inspect other window titles, persist window metadata, add network requests, or change authentication. If the query is unavailable, the existing AppKit visibility/Space checks remain in use. The affected user confirmed recovery; the original triggering event and all wake/Space combinations have not been reproduced. The existing Claude security controls below were retained and rechecked.
 
 ## Findings addressed before release
 

@@ -2,6 +2,13 @@
 
 [简体中文](CHANGELOG.zh-CN.md)
 
+## 1.3.1 (build 8) — 2026-10-27
+
+- Check WindowServer's on-screen state for the quota panel itself, in addition to AppKit's visibility and Space flags. If it is absent, reset its ordering state before showing it again while a supported app is active.
+- Investigated on 2026-10-27: the 1.3.0 process and visibility timer were running with Codex in front, but WindowServer reported the panel off screen. The exact system event that caused this state has not been established.
+- Recovery was confirmed by the affected user after installing 1.3.1. Both architectures compile, and 36 model/navigation checks plus 10 mocked request scenarios pass. This does not establish coverage of every display, Space, or wake scenario.
+- The check reads only this app's window metadata; it does not capture screen contents or add a permission requirement.
+
 ## 1.3.0 (build 7) — 2026-10-25
 
 - Switch between Codex / Work and Claude desktop quota according to the frontmost application's bundle identifier. Other apps still hide the bar.

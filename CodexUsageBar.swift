@@ -1,4 +1,5 @@
 import AppKit
+import CoreGraphics
 import Darwin
 import Foundation
 
@@ -142,11 +143,29 @@ final class UsageBar: NSObject, NSApplicationDelegate {
             refreshProvider(provider)
         }
         positionPanel()
-        // isVisible can remain true while the panel is absent from the active
-        // Space. Reorder it when Codex activates or the Space/session changes.
-        if forceReorder || !panel.isVisible || !panel.isOnActiveSpace {
+        // AppKit's visibility/Space flags can remain true after WindowServer
+        // removes the panel from the screen. Check our own window's metadata;
+        // a missing on-screen flag means it is not ordered on screen.
+        let missingFromScreen = panelIsOrderedOnScreen() == false
+        if missingFromScreen {
+            // Reset AppKit's ordering state before asking WindowServer to show
+            // it again. Repeating orderFront alone can preserve the stale state.
+            panel.orderOut(nil)
+        }
+        if forceReorder || missingFromScreen || !panel.isVisible || !panel.isOnActiveSpace {
             panel.orderFrontRegardless()
         }
+    }
+
+    private func panelIsOrderedOnScreen() -> Bool? {
+        guard panel.windowNumber > 0,
+              let windows = CGWindowListCopyWindowInfo(.optionIncludingWindow, CGWindowID(panel.windowNumber)) as? [[String: Any]] else {
+            return nil
+        }
+        guard let window = windows.first(where: {
+            ($0[kCGWindowNumber as String] as? NSNumber)?.intValue == panel.windowNumber
+        }) else { return false }
+        return window[kCGWindowIsOnscreen as String] as? Bool ?? false
     }
 
     @objc private func connectClaude() { claudeClient.connect() }
@@ -268,7 +287,7 @@ final class UsageBar: NSObject, NSApplicationDelegate {
         }
         defer { if process.isRunning { process.terminate() } }
         do {
-            try send(["jsonrpc":"2.0", "id":1, "method":"initialize", "params":["clientInfo":["name":"codex_usage_bar", "title":"Codex Usage Bar", "version":"1.3.0"], "capabilities":["experimentalApi":true]]])
+            try send(["jsonrpc":"2.0", "id":1, "method":"initialize", "params":["clientInfo":["name":"codex_usage_bar", "title":"Codex Usage Bar", "version":"1.3.1"], "capabilities":["experimentalApi":true]]])
             let initDeadline = Date().addingTimeInterval(8)
             while true {
                 let message = try readLine(until: initDeadline)
